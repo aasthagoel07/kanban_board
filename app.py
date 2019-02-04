@@ -2,6 +2,7 @@ from flask import Flask
 from flask import Flask, flash, redirect, render_template, request, session, abort,url_for
 import os
 from sqlalchemy.orm import sessionmaker
+from werkzeug.security import generate_password_hash, check_password_hash
 import win32api
 from tabledef import *
 engine = create_engine('sqlite:///kanban.db', echo=True)
@@ -30,14 +31,18 @@ def do_login():
     if POST_USERNAME!='' and POST_PASSWORD!='':
         Session = sessionmaker(bind=engine)
         s = Session()
-        query = s.query(User).filter(User.username.in_([POST_USERNAME]), User.password.in_([POST_PASSWORD]) )
+        query = s.query(User).filter(User.username.in_([POST_USERNAME]))
         result = query.first()
         if result:
-            session['logged_in'] = True
-            session['username']=str(request.form['username'])
-            return welcome()
+            if check_password_hash(result.password,POST_PASSWORD):
+                session['logged_in'] = True
+                session['username']=POST_USERNAME
+                return welcome()
+            else:
+                error= 'Wrong password!'
+                return home(error)
         else:
-            error= 'Wrong password!'
+            error='Username does not exist!!'
             return home(error)
     else:
         error='Required Fields Empty!'
@@ -66,13 +71,14 @@ def do_signup():
                 error='Username Already Exists!!'
                 return showsignup(error)
             else:
-                user = User(username=Get_Username,password=Get_Password)
+                Hashed_Password=generate_password_hash(Get_Password, method='sha256')
+                user = User(username=Get_Username,password=Hashed_Password)
                 s.add(user)
                 s.commit()
                 return redirect(url_for('home'))
         else:
             error='Password does not match!!'
-            return showsignup(error)      
+            return showsignup(error)
     else:
         error='Required Field Empty!!'
         return showsignup(error)      
