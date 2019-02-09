@@ -1,6 +1,76 @@
-<html>
-    <body>
-        <p>Hello {{ session['username'] }} !!</p>
-    </body>
-    <a href="http://localhost:5000/logout">Logout</a>
-</html>
+<link rel="stylesheet" href="/static/addtask.css" type="text/css">
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+<script language="javascript" type="text/javascript">
+    $(document).ready(function(){
+        $('.openmodale').click(function (e) {
+            e.preventDefault();
+            $('.modale').addClass('opened');
+        });
+        $('.closemodale').click(function (e) {
+            e.preventDefault();
+            $('.modale').removeClass('opened');
+        });
+        $("#Add_Task").click(function() {
+            var event = {
+                't_name': document.getElementsByName('t_name'),
+                't_desc': document.getElementsByName('t_desc'),
+            };
+            $.ajax({
+                url: '/addtask',
+                data: $('form').serialize(),
+                type: 'POST',
+                success: function(response) {
+                    console.log(response);
+                },
+                error: function(error) {
+                    console.log(error);
+                }
+            });
+        });
+    })
+</script>
+<!-- Modal -->
+<div class="modale" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h2>Add New Task</h2>
+            <a href="#" class="btn-close closemodale" aria-hidden="true">&times;</a>
+        </div>
+        <form>
+            <div class="modal-body">
+                
+                <input type="text" name="t_name" placeholder="Task Name" /><br>
+                <input type="text" name="t_desc" placeholder="Task Description"/>
+                
+                <div class="modal-footer">
+                    <input type="submit" id="Add_Task" value="Add Task" class="btn btn-primary btn-large btn-block closemodale">
+                </div>
+                
+            </div>
+        </form>
+        
+        
+    </div>
+</div>
+
+<!-- /Modal -->
+
+<p>Hello {{ session['username'] }} !!</p>
+<a href="http://localhost:5000/showtask">Show</a>
+<br/>
+<a href="http://localhost:5000/logout">Logout</a>
+<br/>
+<p><a href="#" class="btn btn-big openmodale">Add New Task</a></p> 
+
+<table>
+    {% for task in tasks %}
+    <tr>
+        <td>{{ task.t_id }}</td>
+        <td>{{ task.u_id }}</td>
+        <td>{{ task.task_name }}</td>
+        <td>{{ task.task_desc }}</td>
+        <td>{{ task.status }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
