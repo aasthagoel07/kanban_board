@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_bootstrap import Bootstrap
 from flask import Flask, flash, redirect, render_template, request, session, abort,url_for
 import os
 import logging
@@ -9,6 +10,7 @@ from tabledef import *
 engine = create_engine('sqlite:///kanban.db?check_same_thread=False', echo=True)
  
 app = Flask(__name__)
+bootstrap = Bootstrap(app)
 Ses=sessionmaker(bind=engine)
 @app.route('/')
 def home(error=null):
@@ -18,7 +20,7 @@ def home(error=null):
         else:
             return render_template('login.html',error=error)
     else:
-        return welcome()
+        return redirect(url_for('dashboard'))
 
 def welcome():
     return render_template('welcome.html')
@@ -36,7 +38,7 @@ def do_login():
             if check_password_hash(result.password,POST_PASSWORD):
                 session['logged_in'] = True
                 session['username']=POST_USERNAME
-                return redirect(url_for('home'))
+                return redirect(url_for('dashboard'))
             else:
                 error= 'Wrong password!'
                 return home(error)
@@ -84,7 +86,7 @@ def do_signup():
         return showsignup(error)      
 
 @app.route("/showtask")
-def showaddtask():
+def showtask():
     if session['username']=='':
         return render_template('login.html')
     else:
@@ -94,23 +96,54 @@ def showaddtask():
         u_id=task_user.id
         return render_template('welcome.html',tasks=s.query(Task).filter(Task.u_id.in_([u_id])))
 
-@app.route("/addtask",methods=['POST'])
+@app.route("/addtask",methods=['GET','POST'])
 def add_task():
     s=Ses()
     query=s.query(User).filter(User.username.in_([session['username']]))
     task_user=query.first()
     u_id=task_user.id
     task_name=str(request.form['t_name'])
-    print(task_name)
     task_desc=str(request.form['t_desc'])
-    status="Todo"
+    status=str(request.form['status'])
     new_task=Task(u_id,task_name,task_desc,status)
     s.add(new_task)
     s.commit()
-    logging.info("Added")
-    print("Data Added")
-    return welcome()
+    return redirect(url_for('dashboard'))
 
+@app.route('/dashboard', methods=['GET', 'POST'])
+def dashboard():
+    s=Ses()
+    query=s.query(User).filter(User.username.in_([session['username']]))
+    task_user=query.first()
+    u_id=task_user.id
+    todo = s.query(Task).filter(Task.status.in_(['Todo']),Task.u_id.in_([u_id]))
+    doing = s.query(Task).filter(Task.status.in_(['doing']),Task.u_id.in_([u_id]))
+    done = s.query(Task).filter(Task.status.in_(['done']),Task.u_id.in_([u_id]))
+    return render_template('welcome.html', todo = todo, doing=doing, done=done)
+
+@app.route('/doing/<t_id>', methods=['GET','POST'])
+def doing(t_id):
+    s=Ses()
+    move_doing=s.query(Task).filter(Task.t_id.in_([int(t_id)])).first()
+    move_doing.status ='doing'
+    s.commit()
+    return redirect(url_for('dashboard'))
+
+@app.route('/done/<t_id>', methods=['GET','POST'])
+def done(t_id):
+    s=Ses()
+    move_done = s.query(Task).filter(Task.t_id.in_([int(t_id)])).first()
+    move_done.status ='done'
+    s.commit()
+    return redirect(url_for('dashboard'))
+
+@app.route('/delete/<t_id>', methods=['GET','POST'])
+def delete(t_id):
+    s=Ses()
+    deleted = s.query(Task).filter(Task.t_id.in_([int(t_id)])).first()
+    s.delete(deleted)
+    s.commit()
+    return redirect(url_for('dashboard'))
 
 @app.route("/logout")
 def logout():
